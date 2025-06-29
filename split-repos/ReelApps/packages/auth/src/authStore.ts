@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { getSupabaseClient } from '@reelapps/auth';
 import { User } from '@supabase/supabase-js';
 import { Database } from '@reelapps/types';
+import { getSupabaseClient } from './index';
 
 // Helper function for error handling
 const handleSupabaseError = (error: any, context?: string) => {
@@ -18,7 +18,9 @@ interface AuthState {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  isInitializing: boolean;
   isAuthenticated: boolean;
+  error: any | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, firstName: string, lastName: string, role?: 'candidate' | 'recruiter') => Promise<void>;
   logout: () => Promise<void>;
@@ -27,16 +29,21 @@ interface AuthState {
   initialize: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
   isLoading: false,
+  isInitializing: false,
   isAuthenticated: false,
+  error: null,
+  
+  clearError: () => set({ error: null }),
   
   login: async (email: string, password: string) => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       console.log('Starting login process...');
       
@@ -62,13 +69,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (error) {
       console.error('Login process failed:', error);
-      set({ isLoading: false });
+      set({ 
+        isLoading: false, 
+        error: { 
+          code: 'LOGIN_ERROR', 
+          message: error instanceof Error ? error.message : 'Login failed',
+          details: error
+        }
+      });
       throw error;
     }
   },
 
   signup: async (email: string, password: string, firstName: string, lastName: string, role: 'candidate' | 'recruiter' = 'candidate') => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       console.log('Starting signup process...');
       
@@ -142,7 +156,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     } catch (error) {
       console.error('Signup process failed:', error);
-      set({ isLoading: false });
+      set({ 
+        isLoading: false, 
+        error: { 
+          code: 'SIGNUP_ERROR', 
+          message: error instanceof Error ? error.message : 'Signup failed',
+          details: error
+        }
+      });
       throw error;
     }
   },
@@ -186,7 +207,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data: profile, error } = await getSupabaseClient()
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -201,10 +222,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const { data: newProfile, error: createError } = await getSupabaseClient()
           .from('profiles')
           .insert({
-            user_id: user.id,
+            id: user.id,
             first_name: userData.first_name || 'User',
             last_name: userData.last_name || 'Name',
-            email: user.email
+            email: user.email,
+            role: userData.role || 'candidate'
           })
           .select()
           .single();
@@ -228,14 +250,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   initialize: async () => {
-    set({ isLoading: true });
+    set({ isInitializing: true, error: null });
     try {
       console.log('Initializing auth store...');
       
       const { data: { session }, error } = await getSupabaseClient().auth.getSession();
       if (error) {
         console.error('Session error:', error);
-        set({ isLoading: false });
+        set({ isInitializing: false });
         return;
       }
 
@@ -245,16 +267,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await get().refreshProfile();
       } else {
         console.log('No existing session found');
-        set({ isLoading: false });
+        set({ isInitializing: false });
       }
     } catch (error) {
       console.error('Initialize error:', error);
-      set({ isLoading: false });
+      set({ 
+        isInitializing: false, 
+        error: { 
+          code: 'INIT_ERROR', 
+          message: 'Failed to initialize authentication',
+          details: error
+        }
+      });
     }
   },
 
   sendPasswordResetEmail: async (email: string) => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, {
         redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/password-reset`,
@@ -263,6 +292,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (error) {
         handleSupabaseError(error, 'Password Reset');
       }
+    } catch (error) {
+      set({ 
+        isLoading: false, 
+        error: { 
+          code: 'PASSWORD_RESET_ERROR', 
+          message: error instanceof Error ? error.message : 'Password reset failed',
+          details: error
+        }
+      });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
@@ -297,18 +336,24 @@ export const startSessionWatcher = () => {
 };
 
 // Listen for auth changes with improved error handling
-getSupabaseClient().auth.onAuthStateChange(async (event, session) => {
-  console.log('Auth state change:', event, session?.user?.id || 'no user');
+let authListenerInitialized = false;
+export const initializeAuthListener = () => {
+  if (authListenerInitialized) return;
+  authListenerInitialized = true;
   
-  const { setUser, refreshProfile } = useAuthStore.getState();
-  
-  if (event === 'SIGNED_IN' && session?.user) {
-    setUser(session.user);
-    await refreshProfile();
-  } else if (event === 'SIGNED_OUT') {
-    setUser(null);
-    useAuthStore.setState({ profile: null });
-  } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-    setUser(session.user);
-  }
-});
+  getSupabaseClient().auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth state change:', event, session?.user?.id || 'no user');
+    
+    const { setUser, refreshProfile } = useAuthStore.getState();
+    
+    if (event === 'SIGNED_IN' && session?.user) {
+      setUser(session.user);
+      await refreshProfile();
+    } else if (event === 'SIGNED_OUT') {
+      setUser(null);
+      useAuthStore.setState({ profile: null });
+    } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+      setUser(session.user);
+    }
+  });
+};
