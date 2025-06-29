@@ -265,7 +265,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
   return (
     <ErrorBoundary>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div 
+          className="rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-slate-700/50"
+          style={{ background: 'radial-gradient(ellipse at center, #1E293B 0%, #0F172A 100%)' }}
+        >
           <div className="flex items-center justify-between p-6 border-b border-slate-700">
             <h2 className="text-2xl font-bold text-white">Create Job Posting</h2>
             <button 
@@ -288,7 +291,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
 
             <div className="space-y-8">
               {/* Basic Information */}
-              <div className="bg-slate-900/50 rounded-lg p-6">
+              <div 
+                className="rounded-lg p-6 border border-slate-700/50"
+                style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%)' }}
+              >
                 <h3 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-slate-700">
                   Basic Information
                 </h3>
@@ -371,7 +377,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
               </div>
 
               {/* Job Description */}
-              <div className="bg-slate-900/50 rounded-lg p-6">
+              <div 
+                className="rounded-lg p-6 border border-slate-700/50"
+                style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%)' }}
+              >
                 <h3 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-slate-700">
                   Job Description
                 </h3>
@@ -437,7 +446,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
               </div>
 
               {/* Location & Compensation */}
-              <div className="bg-slate-900/50 rounded-lg p-6">
+              <div 
+                className="rounded-lg p-6 border border-slate-700/50"
+                style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%)' }}
+              >
                 <h3 className="text-lg font-semibold text-white mb-4 pb-2 border-b border-slate-700">
                   Location & Compensation
                 </h3>
@@ -527,28 +539,37 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
             {/* AI Analysis Section */}
             {showAnalysis && analysis && (
               <div className="mt-8">
-                <Card className="bg-slate-900/50">
+                <Card>
                   <div className="flex items-center gap-3 mb-4">
                     <Sparkles size={20} className="text-purple-400" />
                     <h3 className="text-lg font-semibold text-white">AI Job Analysis</h3>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div 
+                      className="text-center p-4 rounded-lg border border-slate-700/50"
+                      style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.3) 0%, rgba(15, 23, 42, 0.3) 100%)' }}
+                    >
                       <div className="text-sm text-slate-400 mb-2">Clarity</div>
                       <div className={`text-2xl font-bold ${getScoreColor(analysis.clarity)}`}>
                         {Math.round(analysis.clarity)}%
                       </div>
                     </div>
                     
-                    <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div 
+                      className="text-center p-4 rounded-lg border border-slate-700/50"
+                      style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.3) 0%, rgba(15, 23, 42, 0.3) 100%)' }}
+                    >
                       <div className="text-sm text-slate-400 mb-2">Realism</div>
                       <div className={`text-2xl font-bold ${getScoreColor(analysis.realism)}`}>
                         {Math.round(analysis.realism)}%
                       </div>
                     </div>
                     
-                    <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <div 
+                      className="text-center p-4 rounded-lg border border-slate-700/50"
+                      style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.3) 0%, rgba(15, 23, 42, 0.3) 100%)' }}
+                    >
                       <div className="text-sm text-slate-400 mb-2">Inclusivity</div>
                       <div className={`text-2xl font-bold ${getScoreColor(analysis.inclusivity)}`}>
                         {Math.round(analysis.inclusivity)}%
@@ -557,7 +578,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
                   </div>
 
                   {analysis.suggestions.length > 0 && (
-                    <div className="bg-slate-800/50 rounded-lg p-4">
+                    <div 
+                      className="rounded-lg p-4 border border-slate-700/50"
+                      style={{ background: 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.3) 0%, rgba(15, 23, 42, 0.3) 100%)' }}
+                    >
                       <h4 className="text-sm font-semibold text-white mb-3">Suggestions for Improvement:</h4>
                       <ul className="space-y-2">
                         {analysis.suggestions.map((suggestion, index) => (

@@ -68,10 +68,15 @@ export const Card: React.FC<CardProps> = ({
   const baseClasses = 'rounded-xl p-6 transition-all duration-300';
   
   const variantClasses = {
-    default: 'bg-slate-800/50 border border-slate-700/50',
-    glass: 'bg-slate-800/30 backdrop-blur-sm border border-slate-700/30',
+    default: 'border border-slate-700/50',
+    glass: 'backdrop-blur-sm border border-slate-700/30',
     gradient: 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
   };
+  
+  // Always use the same background as the main app
+  const backgroundStyle = variant === 'gradient' 
+    ? {} 
+    : { background: 'radial-gradient(ellipse at center, #1E293B 0%, #0F172A 100%)' };
   
   const interactiveClasses = interactive ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : '';
   
@@ -79,6 +84,7 @@ export const Card: React.FC<CardProps> = ({
   
   return React.createElement('div', {
     className: finalClassName,
+    style: backgroundStyle,
     onClick: interactive ? onClick : undefined,
     ...props
   }, children);
@@ -135,9 +141,15 @@ export const AppWrapper: React.FC<AppWrapperProps> = ({
     }
   };
 
+  const authBackgroundStyle = {
+    background: 'radial-gradient(ellipse at center, #1E293B 0%, #0F172A 100%)',
+    backgroundAttachment: 'fixed'
+  };
+
   if (isInitializing) {
     return React.createElement('div', {
-      className: 'min-h-screen flex items-center justify-center bg-slate-900'
+      className: 'min-h-screen flex items-center justify-center',
+      style: authBackgroundStyle
     }, React.createElement('div', {
       className: 'text-center'
     }, [
@@ -154,9 +166,11 @@ export const AppWrapper: React.FC<AppWrapperProps> = ({
 
   if (!isAuthenticated) {
     return React.createElement('div', {
-      className: 'min-h-screen flex items-center justify-center bg-slate-900'
+      className: 'min-h-screen flex items-center justify-center',
+      style: authBackgroundStyle
     }, React.createElement('div', {
-      className: 'w-full max-w-md p-8 bg-slate-800 rounded-xl shadow-lg'
+      className: 'w-full max-w-md p-8 rounded-xl shadow-lg border border-slate-700/50',
+      style: { background: 'radial-gradient(ellipse at center, #1E293B 0%, #0F172A 100%)' }
     }, [
       React.createElement('h2', {
         key: 'title',
@@ -270,9 +284,11 @@ export class ErrorBoundary extends React.Component<
       }
       
       return React.createElement('div', {
-        className: 'min-h-screen flex items-center justify-center bg-slate-900'
+        className: 'min-h-screen flex items-center justify-center',
+        style: { background: 'radial-gradient(ellipse at center, #1E293B 0%, #0F172A 100%)' }
       }, React.createElement('div', {
-        className: 'text-center p-8 bg-slate-800 rounded-xl max-w-md'
+        className: 'text-center p-8 rounded-xl max-w-md border border-slate-700/50',
+        style: { background: 'radial-gradient(ellipse at center, #1E293B 0%, #0F172A 100%)' }
       }, [
         React.createElement('h2', {
           key: 'title',
