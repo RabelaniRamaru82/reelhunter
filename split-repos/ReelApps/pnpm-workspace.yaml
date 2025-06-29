@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*'
+  - '../ReelHunter'
+  - '../ReelCV'
+  - '../ReelPersona'
+  - '../ReelProjects'
+  - '../ReelSkills' 
