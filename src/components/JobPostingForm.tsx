@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button, Card, ErrorBoundary } from '@reelapps/ui';
-import { getSupabaseClient } from '@reelapps/auth';
+import { getSupabaseClient, useAuthStore } from '@reelapps/auth';
 
 interface JobPostingFormProps {
   onClose: () => void;
@@ -13,6 +13,7 @@ interface JobAnalysis {
   realism: number;
   inclusivity: number;
   suggestions: string[];
+  overall: number;
 }
 
 // Error display component
@@ -63,6 +64,7 @@ const ErrorDisplay: React.FC<{
 };
 
 const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }) => {
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState({
     title: '',
     company: '',
@@ -74,7 +76,8 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
     salary_currency: 'USD',
     remote_allowed: false,
     experience_level: 'mid',
-    employment_type: 'full-time'
+    employment_type: 'full-time',
+    skills: ['']
   });
 
   const [analysis, setAnalysis] = useState<JobAnalysis | null>(null);
@@ -83,6 +86,8 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const supabase = getSupabaseClient();
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -108,6 +113,11 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
     const hasValidRequirement = formData.requirements.some(req => req.trim().length > 0);
     if (!hasValidRequirement) {
       errors.requirements = 'At least one requirement is needed';
+    }
+
+    const hasValidSkill = formData.skills.some(skill => skill.trim().length > 0);
+    if (!hasValidSkill) {
+      errors.skills = 'At least one skill is needed';
     }
     
     if (formData.salary_min && formData.salary_max) {
@@ -158,6 +168,23 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
     }
   };
 
+  const handleSkillChange = (index: number, value: string) => {
+    const newSkills = [...formData.skills];
+    newSkills[index] = value;
+    handleInputChange('skills', newSkills);
+  };
+
+  const addSkill = () => {
+    handleInputChange('skills', [...formData.skills, '']);
+  };
+
+  const removeSkill = (index: number) => {
+    if (formData.skills.length > 1) {
+      const newSkills = formData.skills.filter((_, i) => i !== index);
+      handleInputChange('skills', newSkills);
+    }
+  };
+
   const analyzeJobDescription = async () => {
     if (!validateForm()) {
       setError('Please fix the form errors before analyzing');
@@ -168,48 +195,41 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
     setError(null);
     
     try {
-      const supabase = getSupabaseClient();
+      console.log('Analyzing job description with AI...');
+      
       const { data, error: apiError } = await supabase.functions.invoke('analyze-job', {
         body: {
           title: formData.title,
           description: formData.description,
           requirements: formData.requirements.filter(req => req.trim()),
+          skills: formData.skills.filter(skill => skill.trim()),
           experience_level: formData.experience_level,
+          location: formData.location,
+          salary_range: formData.salary_min && formData.salary_max ? {
+            min: parseInt(formData.salary_min),
+            max: parseInt(formData.salary_max),
+            currency: formData.salary_currency
+          } : null
         },
       });
 
       if (apiError) {
-        console.warn('Edge function error:', apiError);
-        // Fallback mock analysis for demo
-        setAnalysis({
-          clarity: 75 + Math.random() * 25,
-          realism: 70 + Math.random() * 30,
-          inclusivity: 80 + Math.random() * 20,
-          suggestions: [
-            'Consider adding more specific technical requirements',
-            'Include information about team size and structure',
-            'Mention opportunities for professional development',
-          ],
-        });
-      } else {
-        setAnalysis(data as JobAnalysis);
+        console.error('AI analysis error:', apiError);
+        throw new Error(`AI analysis failed: ${apiError.message}`);
       }
+
+      if (!data) {
+        throw new Error('No analysis data received from AI service');
+      }
+
+      console.log('AI analysis completed successfully');
+      setAnalysis(data as JobAnalysis);
       setShowAnalysis(true);
+      
     } catch (err) {
       console.error('Analysis failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to analyze job posting');
-      // Fallback mock analysis
-      setAnalysis({
-        clarity: 80,
-        realism: 75,
-        inclusivity: 88,
-        suggestions: [
-          "Review technical requirements for clarity",
-          "Consider salary range transparency",
-          "Add diversity and inclusion statement"
-        ]
-      });
-      setShowAnalysis(true);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze job posting';
+      setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -222,33 +242,82 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
       setError('Please fix the form errors before submitting');
       return;
     }
+
+    if (!user?.id) {
+      setError('You must be logged in to create a job posting');
+      return;
+    }
     
     setIsSaving(true);
     setError(null);
 
     try {
-      // Simulate saving job posting
-      const jobPosting: any = {
-        id: Date.now().toString(),
-        ...formData,
+      console.log('Creating job posting...');
+      
+      const jobData = {
+        title: formData.title,
+        company: formData.company,
+        description: formData.description,
         requirements: formData.requirements.filter(req => req.trim()),
+        skills: formData.skills.filter(skill => skill.trim()),
+        location: formData.location,
         salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
-        ai_analysis_score: analysis,
+        salary_currency: formData.salary_currency,
+        remote_allowed: formData.remote_allowed,
+        experience_level: formData.experience_level,
+        employment_type: formData.employment_type,
+        recruiter_id: user.id,
         status: 'active',
-        created_at: new Date().toISOString()
+        ai_analysis_score: analysis
       };
 
-      // In real implementation, save to Supabase
-      console.log('Saving job posting:', jobPosting);
+      const { data, error: dbError } = await supabase
+        .from('job_postings')
+        .insert(jobData)
+        .select()
+        .single();
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw new Error(`Failed to save job posting: ${dbError.message}`);
+      }
 
-      onJobCreated(jobPosting);
+      console.log('Job posting created successfully:', data.id);
+      
+      // Format the job for the parent component
+      const formattedJob = {
+        id: data.id,
+        title: data.title,
+        company: data.company,
+        location: data.location,
+        type: data.employment_type,
+        salary: {
+          min: data.salary_min || 0,
+          max: data.salary_max || 0,
+          currency: data.salary_currency
+        },
+        description: data.description,
+        requirements: data.requirements,
+        skills: data.skills,
+        experience: data.experience_level,
+        postedAt: new Date(data.created_at).toLocaleDateString(),
+        applicants: 0,
+        matches: 0,
+        status: data.status,
+        priority: 'medium',
+        aiScore: analysis?.overall || 0,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        recruiter_id: data.recruiter_id
+      };
+
+      onJobCreated(formattedJob);
+      
     } catch (err) {
       console.error('Failed to save job posting:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save job posting');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save job posting';
+      setError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -442,6 +511,44 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
                       Add Requirement
                     </Button>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Skills *
+                    </label>
+                    {formData.skills.map((skill, index) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={skill}
+                          onChange={(e) => handleSkillChange(index, e.target.value)}
+                          placeholder="e.g., React, TypeScript, Node.js"
+                          className="flex-1 px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {formData.skills.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSkill(index)}
+                            className="px-3 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {validationErrors.skills && (
+                      <p className="text-red-400 text-sm mt-1">{validationErrors.skills}</p>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="small"
+                      onClick={addSkill}
+                      className="mt-2"
+                    >
+                      Add Skill
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -526,6 +633,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ onClose, onJobCreated }
                         <option value="EUR">EUR</option>
                         <option value="GBP">GBP</option>
                         <option value="CAD">CAD</option>
+                        <option value="ZAR">ZAR</option>
                       </select>
                     </div>
                   </div>

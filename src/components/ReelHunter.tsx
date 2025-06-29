@@ -26,7 +26,7 @@ import {
   RefreshCw,
   X
 } from 'lucide-react';
-import { useAuthStore } from '@reelapps/auth';
+import { useAuthStore, getSupabaseClient } from '@reelapps/auth';
 import JobPostingForm from './JobPostingForm';
 import CandidateResults from './CandidateResults';
 import { Button, Card, ErrorBoundary } from '@reelapps/ui';
@@ -52,6 +52,9 @@ interface JobPosting {
   status: 'active' | 'paused' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   aiScore?: number;
+  created_at: string;
+  updated_at: string;
+  recruiter_id: string;
 }
 
 interface RecruitmentStats {
@@ -131,7 +134,7 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Loading...'
 );
 
 const ReelHunter: React.FC = () => {
-  const { profile, error: authError, clearError } = useAuthStore();
+  const { profile, user, error: authError, clearError } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'jobs' | 'candidates' | 'analytics' | 'pipeline'>('dashboard');
@@ -143,91 +146,147 @@ const ReelHunter: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  const [stats] = useState<RecruitmentStats>({
-    totalJobs: 24,
-    activeJobs: 18,
-    totalApplicants: 347,
-    shortlisted: 89,
-    hired: 12,
-    avgTimeToHire: 18,
-    matchAccuracy: 89,
-    responseRate: 76
+  const [stats, setStats] = useState<RecruitmentStats>({
+    totalJobs: 0,
+    activeJobs: 0,
+    totalApplicants: 0,
+    shortlisted: 0,
+    hired: 0,
+    avgTimeToHire: 0,
+    matchAccuracy: 0,
+    responseRate: 0
   });
 
-  const [jobPostings] = useState<JobPosting[]>([
-    {
-      id: '1',
-      title: 'Senior React Developer',
-      company: 'TechCorp Inc.',
-      location: 'San Francisco, CA',
-      type: 'full-time',
-      salary: { min: 120000, max: 160000, currency: 'USD' },
-      description: 'We are looking for a senior React developer to join our growing team...',
-      requirements: ['5+ years React experience', 'TypeScript proficiency', 'Team leadership'],
-      skills: ['React', 'TypeScript', 'Node.js', 'AWS'],
-      experience: 'Senior',
-      postedAt: '2024-01-15',
-      applicants: 45,
-      matches: 12,
-      status: 'active',
-      priority: 'high',
-      aiScore: 92
-    },
-    {
-      id: '2',
-      title: 'Full Stack Engineer',
-      company: 'StartupXYZ',
-      location: 'Remote',
-      type: 'full-time',
-      salary: { min: 90000, max: 130000, currency: 'USD' },
-      description: 'Join our fast-paced startup as a full-stack engineer...',
-      requirements: ['3+ years experience', 'Full-stack development', 'Startup experience'],
-      skills: ['React', 'Python', 'PostgreSQL', 'Docker'],
-      experience: 'Mid-level',
-      postedAt: '2024-01-12',
-      applicants: 67,
-      matches: 23,
-      status: 'active',
-      priority: 'medium',
-      aiScore: 85
-    },
-    {
-      id: '3',
-      title: 'DevOps Engineer',
-      company: 'CloudTech Solutions',
-      location: 'Austin, TX',
-      type: 'full-time',
-      salary: { min: 110000, max: 150000, currency: 'USD' },
-      description: 'We need a DevOps engineer to scale our infrastructure...',
-      requirements: ['AWS expertise', 'Kubernetes', 'CI/CD pipelines'],
-      skills: ['AWS', 'Kubernetes', 'Docker', 'Terraform'],
-      experience: 'Senior',
-      postedAt: '2024-01-10',
-      applicants: 28,
-      matches: 8,
-      status: 'paused',
-      priority: 'low',
-      aiScore: 78
-    },
-    {
-      id: '4',
-      title: 'Product Manager',
-      company: 'InnovateLabs',
-      location: 'New York, NY',
-      type: 'full-time',
-      salary: { min: 140000, max: 180000, currency: 'USD' },
-      description: 'Lead product strategy and development for our AI platform...',
-      requirements: ['5+ years PM experience', 'AI/ML background', 'Technical leadership'],
-      skills: ['Product Strategy', 'AI/ML', 'Leadership', 'Analytics'],
-      experience: 'Senior',
-      postedAt: '2024-01-08',
-      applicants: 34,
-      matches: 15,
-      status: 'active',
-      priority: 'urgent',
-      aiScore: 95
+  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+  const [aiInsights, setAiInsights] = useState<any>(null);
+
+  const supabase = getSupabaseClient();
+
+  // Fetch recruitment stats from Supabase
+  const fetchRecruitmentStats = async () => {
+    try {
+      if (!user?.id) return;
+
+      // Fetch job postings count
+      const { data: jobs, error: jobsError } = await supabase
+        .from('job_postings')
+        .select('id, status, created_at')
+        .eq('recruiter_id', user.id);
+
+      if (jobsError) throw jobsError;
+
+      // Fetch applications count
+      const { data: applications, error: appsError } = await supabase
+        .from('job_applications')
+        .select('id, status, created_at, job_id')
+        .in('job_id', jobs?.map(j => j.id) || []);
+
+      if (appsError) throw appsError;
+
+      // Calculate stats
+      const totalJobs = jobs?.length || 0;
+      const activeJobs = jobs?.filter(j => j.status === 'active').length || 0;
+      const totalApplicants = applications?.length || 0;
+      const shortlisted = applications?.filter(a => a.status === 'shortlisted').length || 0;
+      const hired = applications?.filter(a => a.status === 'hired').length || 0;
+
+      // Calculate average time to hire
+      const hiredApps = applications?.filter(a => a.status === 'hired') || [];
+      const avgTimeToHire = hiredApps.length > 0 
+        ? Math.round(hiredApps.reduce((acc, app) => {
+            const daysDiff = Math.floor((new Date(app.created_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+            return acc + Math.abs(daysDiff);
+          }, 0) / hiredApps.length)
+        : 0;
+
+      setStats({
+        totalJobs,
+        activeJobs,
+        totalApplicants,
+        shortlisted,
+        hired,
+        avgTimeToHire,
+        matchAccuracy: totalApplicants > 0 ? Math.round((shortlisted / totalApplicants) * 100) : 0,
+        responseRate: totalApplicants > 0 ? Math.round((shortlisted / totalApplicants) * 100) : 0
+      });
+
+    } catch (err) {
+      console.error('Error fetching recruitment stats:', err);
+      // Don't throw error, just log it - stats are not critical
     }
-  ]);
+  };
+
+  // Fetch job postings from Supabase
+  const fetchJobPostings = async () => {
+    try {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
+        .from('job_postings')
+        .select(`
+          *,
+          job_applications(count)
+        `)
+        .eq('recruiter_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedJobs: JobPosting[] = data?.map(job => ({
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        type: job.employment_type || 'full-time',
+        salary: {
+          min: job.salary_min || 0,
+          max: job.salary_max || 0,
+          currency: job.salary_currency || 'USD'
+        },
+        description: job.description,
+        requirements: job.requirements || [],
+        skills: job.skills || [],
+        experience: job.experience_level || 'mid',
+        postedAt: new Date(job.created_at).toLocaleDateString(),
+        applicants: job.job_applications?.[0]?.count || 0,
+        matches: 0, // Will be calculated by AI
+        status: job.status,
+        priority: job.priority || 'medium',
+        aiScore: job.ai_analysis_score?.overall || 0,
+        created_at: job.created_at,
+        updated_at: job.updated_at,
+        recruiter_id: job.recruiter_id
+      })) || [];
+
+      setJobPostings(formattedJobs);
+
+    } catch (err) {
+      console.error('Error fetching job postings:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch job postings');
+    }
+  };
+
+  // Fetch AI insights from edge function
+  const fetchAiInsights = async () => {
+    try {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase.functions.invoke('get-recruitment-insights', {
+        body: { recruiter_id: user.id }
+      });
+
+      if (error) {
+        console.warn('AI insights not available:', error);
+        return;
+      }
+
+      setAiInsights(data);
+
+    } catch (err) {
+      console.warn('Error fetching AI insights:', err);
+      // Don't set error state for AI insights - they're optional
+    }
+  };
 
   // Initialize component with error handling
   useEffect(() => {
@@ -236,14 +295,18 @@ const ReelHunter: React.FC = () => {
         setIsLoading(true);
         setError(null);
         
-        // Simulate initialization delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
         // Check URL hash
         const hash = location.hash.replace('#', '');
         if (['dashboard', 'jobs', 'candidates', 'analytics', 'pipeline'].includes(hash)) {
           setActiveTab(hash as any);
         }
+
+        // Fetch data in parallel
+        await Promise.all([
+          fetchRecruitmentStats(),
+          fetchJobPostings(),
+          fetchAiInsights()
+        ]);
         
         setIsLoading(false);
       } catch (err) {
@@ -252,8 +315,10 @@ const ReelHunter: React.FC = () => {
       }
     };
 
-    initializeComponent();
-  }, [location.hash, retryCount]);
+    if (user?.id) {
+      initializeComponent();
+    }
+  }, [location.hash, retryCount, user?.id]);
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
@@ -275,10 +340,17 @@ const ReelHunter: React.FC = () => {
     }
   };
 
-  const handleJobCreated = (job: JobPosting) => {
+  const handleJobCreated = async (job: JobPosting) => {
     try {
       setShowJobForm(false);
-      setSelectedJob(job);
+      
+      // Refresh job postings to include the new job
+      await fetchJobPostings();
+      await fetchRecruitmentStats();
+      
+      // Find the newly created job and select it
+      const newJob = jobPostings.find(j => j.id === job.id) || job;
+      setSelectedJob(newJob);
       updateTab('candidates');
     } catch (err) {
       setError('Failed to process new job posting');
@@ -364,20 +436,22 @@ const ReelHunter: React.FC = () => {
                 <span>{job.location}</span>
               </div>
             </div>
-            {job.aiScore && (
+            {job.aiScore && job.aiScore > 0 && (
               <div className="text-right">
                 <div className="text-lg font-bold text-purple-300">{job.aiScore}%</div>
-                <div className="text-xs text-purple-400">AI Match</div>
+                <div className="text-xs text-purple-400">AI Score</div>
               </div>
             )}
           </div>
 
           {/* Job Details */}
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <DollarSign size={14} className="text-green-400" />
-              <span>${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()}</span>
-            </div>
+            {job.salary.min > 0 && job.salary.max > 0 && (
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <DollarSign size={14} className="text-green-400" />
+                <span>${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm text-slate-300">
               <Briefcase size={14} className="text-blue-400" />
               <span className="capitalize">{job.type}</span>
@@ -393,18 +467,20 @@ const ReelHunter: React.FC = () => {
           </div>
 
           {/* Skills */}
-          <div className="flex flex-wrap gap-1 mb-4">
-            {job.skills.slice(0, 4).map((skill) => (
-              <span key={skill} className="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-300">
-                {skill}
-              </span>
-            ))}
-            {job.skills.length > 4 && (
-              <span className="px-2 py-1 bg-slate-700/50 rounded text-xs text-slate-400">
-                +{job.skills.length - 4} more
-              </span>
-            )}
-          </div>
+          {job.skills.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-4">
+              {job.skills.slice(0, 4).map((skill) => (
+                <span key={skill} className="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-300">
+                  {skill}
+                </span>
+              ))}
+              {job.skills.length > 4 && (
+                <span className="px-2 py-1 bg-slate-700/50 rounded text-xs text-slate-400">
+                  +{job.skills.length - 4} more
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between text-sm text-slate-400">
@@ -622,6 +698,17 @@ const ReelHunter: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {jobPostings.slice(0, 3).map(renderJobCard)}
+                  {jobPostings.length === 0 && (
+                    <div className="col-span-full text-center py-12">
+                      <Briefcase size={48} className="mx-auto text-slate-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-white mb-2">No Job Postings Yet</h3>
+                      <p className="text-slate-400 mb-4">Create your first job posting to start finding candidates</p>
+                      <Button onClick={() => setShowJobForm(true)}>
+                        <Plus size={16} className="mr-2" />
+                        Post Your First Job
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -635,40 +722,55 @@ const ReelHunter: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-white mb-3">Market Trends</h3>
                     <ul className="space-y-2 text-sm text-slate-400">
-                      <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-500" />
-                        React developers are in high demand (+23% this month)
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-500" />
-                        Remote positions receive 40% more applications
-                      </li>
+                      {aiInsights?.marketTrends?.map((trend: string, index: number) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <ChevronRight size={14} className="text-slate-500" />
+                          {trend}
+                        </li>
+                      )) || (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <ChevronRight size={14} className="text-slate-500" />
+                            Loading market insights...
+                          </li>
+                        </>
+                      )}
                     </ul>
                   </div>
                   <div>
                     <h3 className="font-semibold text-white mb-3">Optimization Tips</h3>
                     <ul className="space-y-2 text-sm text-slate-400">
-                      <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-500" />
-                        Jobs with salary ranges get 2x more applications
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-500" />
-                        Video job descriptions increase engagement by 60%
-                      </li>
+                      {aiInsights?.optimizationTips?.map((tip: string, index: number) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <ChevronRight size={14} className="text-slate-500" />
+                          {tip}
+                        </li>
+                      )) || (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <ChevronRight size={14} className="text-slate-500" />
+                            Analyzing your recruitment patterns...
+                          </li>
+                        </>
+                      )}
                     </ul>
                   </div>
                   <div>
                     <h3 className="font-semibold text-white mb-3">Candidate Insights</h3>
                     <ul className="space-y-2 text-sm text-slate-400">
-                      <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-500" />
-                        Top candidates respond within 24 hours
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-slate-500" />
-                        Video portfolios increase hire probability by 3x
-                      </li>
+                      {aiInsights?.candidateInsights?.map((insight: string, index: number) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <ChevronRight size={14} className="text-slate-500" />
+                          {insight}
+                        </li>
+                      )) || (
+                        <>
+                          <li className="flex items-center gap-2">
+                            <ChevronRight size={14} className="text-slate-500" />
+                            Gathering candidate data...
+                          </li>
+                        </>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -711,6 +813,17 @@ const ReelHunter: React.FC = () => {
               {/* Jobs Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredJobs.map(renderJobCard)}
+                {filteredJobs.length === 0 && (
+                  <div className="col-span-full text-center py-12">
+                    <Search size={48} className="mx-auto text-slate-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">No Jobs Found</h3>
+                    <p className="text-slate-400 mb-4">Try adjusting your search or filters</p>
+                    <Button onClick={() => setShowJobForm(true)}>
+                      <Plus size={16} className="mr-2" />
+                      Post New Job
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -749,7 +862,7 @@ const ReelHunter: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Interviewed</span>
-                      <span className="text-purple-300 font-bold">34</span>
+                      <span className="text-purple-300 font-bold">{Math.round(stats.shortlisted * 0.6)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Hired</span>
@@ -790,11 +903,14 @@ const ReelHunter: React.FC = () => {
                           <p className="text-xs text-slate-400">{job.applicants} applicants</p>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-bold text-blue-300">{job.aiScore}%</div>
+                          <div className="text-sm font-bold text-blue-300">{job.aiScore || 0}%</div>
                           <div className="text-xs text-slate-400">Score</div>
                         </div>
                       </div>
                     ))}
+                    {jobPostings.length === 0 && (
+                      <p className="text-slate-400 text-sm">No job data available</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -807,10 +923,10 @@ const ReelHunter: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
-                  { stage: 'Applied', count: 89, color: 'blue' },
-                  { stage: 'Screening', count: 34, color: 'yellow' },
-                  { stage: 'Interview', count: 12, color: 'purple' },
-                  { stage: 'Offer', count: 5, color: 'green' }
+                  { stage: 'Applied', count: stats.totalApplicants, color: 'blue' },
+                  { stage: 'Screening', count: Math.round(stats.totalApplicants * 0.4), color: 'yellow' },
+                  { stage: 'Interview', count: Math.round(stats.shortlisted * 0.6), color: 'purple' },
+                  { stage: 'Offer', count: stats.hired, color: 'green' }
                 ].map((stage) => (
                   <div key={stage.stage} className="bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 rounded-lg p-6">
                     <h3 className="text-lg font-bold text-white mb-2">{stage.stage}</h3>

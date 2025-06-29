@@ -4,7 +4,12 @@ import { Star, MapPin, Clock, ExternalLink, User, AlertCircle, RefreshCw, X } fr
 import { Button, Card, ErrorBoundary } from '@reelapps/ui';
 
 interface Job {
+  id: string;
   title: string;
+  description: string;
+  requirements: string[];
+  skills: string[];
+  experience: string;
   [key: string]: unknown;
 }
 
@@ -107,31 +112,44 @@ const CandidateResults: React.FC<CandidateResultsProps> = ({ job }) => {
     setError(null);
     
     try {
+      console.log('Fetching candidate matches for job:', job.id);
+      
       const { data, error: apiError } = await supabase.functions.invoke('match-candidates', {
-        body: { jobPosting: job },
+        body: { 
+          job_id: job.id,
+          job_title: job.title,
+          job_description: job.description,
+          job_requirements: job.requirements,
+          job_skills: job.skills,
+          experience_level: job.experience
+        },
       });
 
       if (apiError) {
-        console.warn('Edge function error:', apiError);
-        // Fall back to mock data
-        setMatches(generateMockMatches());
-        return;
+        console.error('Edge function error:', apiError);
+        throw new Error(`AI matching service error: ${apiError.message}`);
       }
 
-      // In a real app, you'd validate the response schema here
-      if (data && Array.isArray(data)) {
-        setMatches(data);
-      } else {
-        setMatches(generateMockMatches());
+      if (!data || !Array.isArray(data)) {
+        throw new Error('Invalid response format from AI matching service');
       }
+
+      console.log('Successfully fetched candidate matches:', data.length);
+      setMatches(data);
+      
     } catch (err) {
       console.error('Failed to fetch candidate matches:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch candidates');
-      setMatches(generateMockMatches());
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidates';
+      setError(errorMessage);
+      
+      // Don't set empty matches on error - let user retry
+      if (matches.length === 0) {
+        setMatches([]);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [job, supabase]);
+  }, [job, supabase, matches.length]);
 
   useEffect(() => {
     fetchCandidateMatches();
@@ -143,80 +161,6 @@ const CandidateResults: React.FC<CandidateResultsProps> = ({ job }) => {
 
   const handleDismissError = () => {
     setError(null);
-  };
-
-  const generateMockMatches = (): CandidateMatch[] => {
-    return [
-      {
-        candidate_id: '1',
-        overall_score: 92,
-        skills_match: 95,
-        culture_match: 88,
-        experience_match: 93,
-        reasoning: "Exceptional technical skills alignment, excellent experience level fit, strong cultural alignment.",
-        strengths: ["React expertise", "Team leadership", "Problem solving"],
-        concerns: ["Limited backend experience"],
-        candidate: {
-          id: '1',
-          first_name: 'Sarah',
-          last_name: 'Chen',
-          headline: 'Senior Frontend Developer with 6+ years React experience',
-          location: 'San Francisco, CA',
-          availability: 'available',
-          skills: [
-            { name: 'React', proficiency: 'expert', years_experience: 6 },
-            { name: 'TypeScript', proficiency: 'advanced', years_experience: 4 },
-            { name: 'Node.js', proficiency: 'intermediate', years_experience: 3 }
-          ]
-        }
-      },
-      {
-        candidate_id: '2',
-        overall_score: 87,
-        skills_match: 89,
-        culture_match: 85,
-        experience_match: 87,
-        reasoning: "Strong technical skills alignment, good experience level, good cultural fit.",
-        strengths: ["Full-stack capabilities", "Agile experience", "Communication skills"],
-        concerns: ["Remote work preference", "Salary expectations"],
-        candidate: {
-          id: '2',
-          first_name: 'Marcus',
-          last_name: 'Johnson',
-          headline: 'Full-Stack Developer passionate about user experience',
-          location: 'Remote',
-          availability: 'open',
-          skills: [
-            { name: 'React', proficiency: 'advanced', years_experience: 4 },
-            { name: 'Python', proficiency: 'expert', years_experience: 5 },
-            { name: 'AWS', proficiency: 'intermediate', years_experience: 2 }
-          ]
-        }
-      },
-      {
-        candidate_id: '3',
-        overall_score: 78,
-        skills_match: 82,
-        culture_match: 75,
-        experience_match: 77,
-        reasoning: "Good skills match with some gaps, adequate experience level, potential cultural fit concerns.",
-        strengths: ["Quick learner", "Open source contributions", "Design skills"],
-        concerns: ["Limited React experience", "Junior level"],
-        candidate: {
-          id: '3',
-          first_name: 'Emily',
-          last_name: 'Rodriguez',
-          headline: 'Frontend Developer with strong design background',
-          location: 'Austin, TX',
-          availability: 'available',
-          skills: [
-            { name: 'Vue.js', proficiency: 'advanced', years_experience: 3 },
-            { name: 'React', proficiency: 'intermediate', years_experience: 1 },
-            { name: 'UI/UX Design', proficiency: 'expert', years_experience: 4 }
-          ]
-        }
-      }
-    ];
   };
 
   const getScoreColor = (score: number) => {
@@ -255,7 +199,7 @@ const CandidateResults: React.FC<CandidateResultsProps> = ({ job }) => {
     return (
       <ErrorBoundary>
         <div className="container mx-auto p-6">
-          <LoadingSpinner message={`Finding the best candidates for ${job.title}...`} />
+          <LoadingSpinner message={`AI is analyzing candidates for ${job.title}...`} />
         </div>
       </ErrorBoundary>
     );
@@ -270,14 +214,14 @@ const CandidateResults: React.FC<CandidateResultsProps> = ({ job }) => {
             error={error}
             onRetry={handleRetry}
             onDismiss={handleDismissError}
-            type="warning"
+            type="error"
           />
         )}
 
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-white mb-2">Candidate Matches for {job.title}</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">AI-Matched Candidates for {job.title}</h2>
               <p className="text-slate-400">{filteredAndSortedMatches.length} candidates found</p>
             </div>
             
