@@ -11,10 +11,10 @@
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "@reelapps/auth": "file:../ReelApps/packages/auth",
-    "@reelapps/config": "file:../ReelApps/packages/config",
-    "@reelapps/types": "file:../ReelApps/packages/types",
-    "@reelapps/ui": "file:../ReelApps/packages/ui",
+    "@reelapps/auth": "file:./split-repos/ReelApps/packages/auth",
+    "@reelapps/config": "file:./split-repos/ReelApps/packages/config",
+    "@reelapps/types": "file:./split-repos/ReelApps/packages/types",
+    "@reelapps/ui": "file:./split-repos/ReelApps/packages/ui",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
