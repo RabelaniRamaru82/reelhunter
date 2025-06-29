@@ -335,7 +335,7 @@ const ReelHunter: React.FC = () => {
     return (
       <div
         key={job.id}
-        className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer"
+        className="group relative bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 rounded-lg p-6 hover:border-slate-600/50 transition-all duration-300 hover:bg-slate-800/30 cursor-pointer"
         onClick={() => {
           try {
             setSelectedJob(job);
@@ -417,9 +417,9 @@ const ReelHunter: React.FC = () => {
         </div>
 
         {/* Hover Actions */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-end justify-center pb-4">
+        <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-end justify-center pb-4">
           <div className="flex gap-2">
-            <Button size="small" variant="outline" className="bg-slate-800/80 backdrop-blur-sm">
+            <Button size="small" variant="outline" className="bg-slate-800/80 backdrop-blur-sm border-slate-600/50">
               <Eye size={14} className="mr-1" />
               View Details
             </Button>
@@ -480,26 +480,12 @@ const ReelHunter: React.FC = () => {
                     setError('Failed to open job posting form');
                   }
                 }}
-                className="group relative px-6 py-3 font-semibold text-white transition-all duration-300 ease-out overflow-hidden rounded-xl"
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 15px 40px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 30px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-                }}
+                className="group relative px-6 py-3 font-semibold text-white transition-all duration-300 ease-out overflow-hidden rounded-lg bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 hover:bg-slate-700/50 hover:border-slate-600/50"
               >
                 <div className="relative flex items-center gap-2 z-10">
                   <Plus size={16} />
                   Post New Job
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
               </button>
             </div>
 
@@ -520,20 +506,14 @@ const ReelHunter: React.FC = () => {
                 return (
                   <div 
                     key={index}
-                    className="relative p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer group"
-                    style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      boxShadow: '0 8px 25px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}
+                    className="relative p-4 rounded-lg transition-all duration-300 hover:scale-105 cursor-pointer group bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 hover:bg-slate-800/30 hover:border-slate-600/50"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <Icon size={20} className="text-white/90" />
-                      <Trend size={16} className="text-white/70" />
+                      <Icon size={20} className="text-slate-300" />
+                      <Trend size={16} className="text-slate-400" />
                     </div>
                     <div className="text-2xl font-bold text-white">{stat.value}</div>
-                    <div className="text-sm text-white/70">{stat.label}</div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
+                    <div className="text-sm text-slate-400">{stat.label}</div>
                   </div>
                 );
               })}
@@ -554,16 +534,11 @@ const ReelHunter: React.FC = () => {
                 <button
                   key={tab.key}
                   onClick={() => updateTab(tab.key as any)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl whitespace-nowrap transition-all duration-300 ${
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg whitespace-nowrap transition-all duration-300 ${
                     activeTab === tab.key
-                      ? 'text-white shadow-lg'
-                      : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-slate-700/50'
+                      ? 'bg-slate-700/50 text-white border border-slate-600/50 shadow-lg'
+                      : 'bg-slate-800/20 text-slate-300 hover:bg-slate-700/30 border border-slate-700/30 hover:border-slate-600/50'
                   }`}
-                  style={activeTab === tab.key ? {
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    boxShadow: '0 8px 25px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
-                  } : {}}
                 >
                   <Icon size={16} />
                   {tab.label}
@@ -614,25 +589,19 @@ const ReelHunter: React.FC = () => {
                           setError('Failed to perform action');
                         }
                       }}
-                      className="relative p-6 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer group"
-                      style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        boxShadow: '0 8px 25px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                      }}
+                      className="relative p-6 rounded-lg transition-all duration-300 hover:scale-105 cursor-pointer group bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 hover:bg-slate-800/30 hover:border-slate-600/50"
                     >
                       <div className="flex items-center gap-3 mb-3">
-                        <Icon size={24} className="text-white/90" />
+                        <Icon size={24} className="text-slate-300" />
                         <div>
                           <h3 className="text-lg font-bold text-white">{item.title}</h3>
-                          <p className="text-sm text-white/70">{item.description}</p>
+                          <p className="text-sm text-slate-400">{item.description}</p>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between text-white/80">
+                      <div className="flex items-center justify-between text-slate-400">
                         <span className="text-sm">Get Started</span>
                         <ChevronRight size={14} />
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
                     </div>
                   );
                 })}
@@ -657,54 +626,47 @@ const ReelHunter: React.FC = () => {
               </div>
 
               {/* AI Insights */}
-              <div 
-                className="relative p-6 rounded-xl"
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  boxShadow: '0 8px 25px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
-                }}
-              >
+              <div className="relative p-6 rounded-lg bg-slate-800/20 backdrop-blur-sm border border-slate-700/30">
                 <div className="flex items-center gap-3 mb-4">
-                  <Brain size={24} className="text-white/90" />
+                  <Brain size={24} className="text-slate-300" />
                   <h2 className="text-xl font-bold text-white">AI Recruitment Insights</h2>
                 </div>
                 <div className="grid md:grid-cols-3 gap-6">
                   <div>
-                    <h3 className="font-semibold text-white/90 mb-3">Market Trends</h3>
-                    <ul className="space-y-2 text-sm text-white/70">
+                    <h3 className="font-semibold text-white mb-3">Market Trends</h3>
+                    <ul className="space-y-2 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-white/80" />
+                        <ChevronRight size={14} className="text-slate-500" />
                         React developers are in high demand (+23% this month)
                       </li>
                       <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-white/80" />
+                        <ChevronRight size={14} className="text-slate-500" />
                         Remote positions receive 40% more applications
                       </li>
                     </ul>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white/90 mb-3">Optimization Tips</h3>
-                    <ul className="space-y-2 text-sm text-white/70">
+                    <h3 className="font-semibold text-white mb-3">Optimization Tips</h3>
+                    <ul className="space-y-2 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-white/80" />
+                        <ChevronRight size={14} className="text-slate-500" />
                         Jobs with salary ranges get 2x more applications
                       </li>
                       <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-white/80" />
+                        <ChevronRight size={14} className="text-slate-500" />
                         Video job descriptions increase engagement by 60%
                       </li>
                     </ul>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white/90 mb-3">Candidate Insights</h3>
-                    <ul className="space-y-2 text-sm text-white/70">
+                    <h3 className="font-semibold text-white mb-3">Candidate Insights</h3>
+                    <ul className="space-y-2 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-white/80" />
+                        <ChevronRight size={14} className="text-slate-500" />
                         Top candidates respond within 24 hours
                       </li>
                       <li className="flex items-center gap-2">
-                        <ChevronRight size={14} className="text-white/80" />
+                        <ChevronRight size={14} className="text-slate-500" />
                         Video portfolios increase hire probability by 3x
                       </li>
                     </ul>
@@ -725,7 +687,7 @@ const ReelHunter: React.FC = () => {
                     placeholder="Search jobs..."
                     value={searchQuery}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 
@@ -734,7 +696,7 @@ const ReelHunter: React.FC = () => {
                     <button
                       key={status}
                       onClick={() => setFilterStatus(status)}
-                      className={`px-4 py-3 rounded-xl whitespace-nowrap transition-all capitalize ${
+                      className={`px-4 py-3 rounded-lg whitespace-nowrap transition-all capitalize ${
                         filterStatus === status
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
                           : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-slate-700/50'
@@ -774,7 +736,7 @@ const ReelHunter: React.FC = () => {
               
               {/* Analytics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+                <div className="bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 rounded-lg p-6">
                   <h3 className="text-lg font-bold text-white mb-4">Hiring Funnel</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -796,7 +758,7 @@ const ReelHunter: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+                <div className="bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 rounded-lg p-6">
                   <h3 className="text-lg font-bold text-white mb-4">Performance Metrics</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -818,7 +780,7 @@ const ReelHunter: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+                <div className="bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 rounded-lg p-6">
                   <h3 className="text-lg font-bold text-white mb-4">Top Performing Jobs</h3>
                   <div className="space-y-3">
                     {jobPostings.slice(0, 3).map((job) => (
@@ -850,9 +812,9 @@ const ReelHunter: React.FC = () => {
                   { stage: 'Interview', count: 12, color: 'purple' },
                   { stage: 'Offer', count: 5, color: 'green' }
                 ].map((stage) => (
-                  <div key={stage.stage} className={`bg-gradient-to-br from-${stage.color}-800/30 to-${stage.color}-900/30 backdrop-blur-sm border border-${stage.color}-700/50 rounded-xl p-6`}>
+                  <div key={stage.stage} className="bg-slate-800/20 backdrop-blur-sm border border-slate-700/30 rounded-lg p-6">
                     <h3 className="text-lg font-bold text-white mb-2">{stage.stage}</h3>
-                    <div className={`text-3xl font-bold text-${stage.color}-300 mb-2`}>{stage.count}</div>
+                    <div className="text-3xl font-bold text-blue-300 mb-2">{stage.count}</div>
                     <p className="text-sm text-slate-400">candidates</p>
                   </div>
                 ))}
